@@ -27,7 +27,7 @@ static char battery_state = STATE_AC;
 static unsigned int battery_level = 100;
 
 /* check frequency multiplier (seconds) */
-static unsigned int multiplier = 10;
+static unsigned int multiplier = 60;
 
 /* battery warning levels */
 static unsigned int warning = 15;
@@ -223,15 +223,18 @@ void validate_options()
 int main(int argc, char *argv[])
 {
   int duration;
+
   parse_args(argc, argv);
   validate_options();
 
   if (daemonize && daemon(1, 1) < 0) {
     err(2, "daemon");
   }
+  
   for(;;) {
     update_battery();
     duration = multiplier;
+     
     if (battery_discharging) { /* discharging */
       if((state_switch == 1 || state_switch == NULL) && battery_level <= 80){
         notify(dischargingmsg, NOTIFY_URGENCY_CRITICAL);
