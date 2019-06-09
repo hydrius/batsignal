@@ -18,6 +18,7 @@
 /* program operation options */
 static char daemonize = 0;
 static char battery_required = 1;
+static char state_switch = NULL; //True is charging; False is discharging
 
 /* battery information */
 static char *battery_name = "BAT0";
@@ -26,7 +27,7 @@ static char battery_state = STATE_AC;
 static unsigned int battery_level = 100;
 
 /* check frequency multiplier (seconds) */
-static unsigned int multiplier = 60;
+static unsigned int multiplier = 10;
 
 /* battery warning levels */
 static unsigned int warning = 15;
@@ -38,6 +39,9 @@ static unsigned int full = 0;
 static char *warningmsg = "Battery is low";
 static char *criticalmsg = "Battery is critically low";
 static char *fullmsg = "Battery is full";
+
+static char *dischargingmsg = "Battery is being depleted";
+static char *charginggmsg = "Battery is charging";
 
 /* run this system command if battery reaches danger level */
 static char *dangercmd = "";
@@ -219,19 +223,20 @@ void validate_options()
 int main(int argc, char *argv[])
 {
   int duration;
-
   parse_args(argc, argv);
   validate_options();
 
   if (daemonize && daemon(1, 1) < 0) {
     err(2, "daemon");
   }
-
   for(;;) {
     update_battery();
     duration = multiplier;
-
     if (battery_discharging) { /* discharging */
+      if((state_switch == 1 || state_switch == NULL) && battery_level <= 80){
+        notify(dischargingmsg, NOTIFY_URGENCY_CRITICAL);
+	      state_switch = 0;
+      } 
       if (danger && battery_level <= danger && battery_state != STATE_DANGER) {
         battery_state = STATE_DANGER;
         if (dangercmd[0] != '\0')
@@ -254,6 +259,10 @@ int main(int argc, char *argv[])
       }
 
     } else { /* charging */
+	      if(state_switch == 0 || state_switch == NULL){
+	        notify(charginggmsg, NOTIFY_URGENCY_CRITICAL);
+	        state_switch = 1;
+	      }
         battery_state = STATE_AC;
         if (full && battery_level >= full && battery_state != STATE_FULL) {
             battery_state = STATE_FULL;
